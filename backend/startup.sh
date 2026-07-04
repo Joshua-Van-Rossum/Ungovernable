@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # Azure App Service (Linux, Python) startup command.
-# Set this as the App Service "Startup Command":  bash startup.sh
+# Set this as the App Service "Startup Command":  bash backend/startup.sh
 set -euo pipefail
+
+# Move into the backend directory so all paths resolve correctly.
+cd "$(dirname "$0")"
 
 # /home is the only persistent volume on App Service Linux.
 # Create the data directory if it doesn't exist yet.
