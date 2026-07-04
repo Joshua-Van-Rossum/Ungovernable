@@ -533,9 +533,41 @@
   .kpi-big {
     grid-template-columns: 1fr 1fr;
   }
+  .kpi-big__value {
+    font-size: 1.2rem;
+  }
+  .kpi-big__cell {
+    padding: 14px 14px;
+  }
+  .sr-row {
+    gap: 12px;
+  }
+  .carousel__tabs {
+    gap: 2px;
+  }
+  .carousel__tab {
+    padding: 5px 10px;
+    font-size: 0.78rem;
+  }
 }
 @media (max-width: 480px) {
   .audit-grid {
     grid-template-columns: 1fr;
+  }
+  .kpi-big {
+    grid-template-columns: 1fr;
+  }
+  .kpi-strip {
+    flex-direction: column;
+    gap: 0;
+  }
+  .kpi-strip__item {
+    width: 100%;
+  }
+  .kpi-strip__sep {
+    display: none;
+  }
+  .kpi-strip__text {
+    padding: 8px 4px;
   }
 }

@@ -33,9 +33,20 @@ function Logo() {
   );
 }
 
+function HamburgerIcon({ open }) {
+  return (
+    <svg className={`hamburger-icon ${open ? "hamburger-icon--open" : ""}`} viewBox="0 0 20 20" width="20" height="20" aria-hidden>
+      <rect className="hb-bar hb-bar--1" x="2" y="5" width="16" height="1.8" rx="0.9" fill="currentColor" />
+      <rect className="hb-bar hb-bar--2" x="2" y="9.1" width="16" height="1.8" rx="0.9" fill="currentColor" />
+      <rect className="hb-bar hb-bar--3" x="2" y="13.2" width="16" height="1.8" rx="0.9" fill="currentColor" />
+    </svg>
+  );
+}
+
 export default function AppShell() {
   const [me, setMe] = useState(null);
-  const [sheet, setSheet] = useState(null); // "workout" | "expense" | "upskilling" | null
+  const [sheet, setSheet] = useState(null); // "workout" | "expense" | "habits" | null
+  const [navOpen, setNavOpen] = useState(false);
 
   // Record a visit once per app open (powers the commit grid).
   useEffect(() => {
@@ -43,8 +54,12 @@ export default function AppShell() {
     api.get("/me").then(setMe).catch(() => {});
   }, []);
 
+  // Close nav on route change
+  const closeNav = () => setNavOpen(false);
+
   return (
     <div className="shell">
+      {/* Desktop sidebar */}
       <aside className="shell__nav">
         <div className="shell__brand">
           <Logo />
@@ -57,9 +72,7 @@ export default function AppShell() {
               end={n.end}
               className={({ isActive }) => `nav__item ${isActive ? "is-active" : ""}`}
             >
-              <span className="nav__icon mono" aria-hidden>
-                {n.icon}
-              </span>
+              <span className="nav__icon mono" aria-hidden>{n.icon}</span>
               <span className="nav__label">{n.label}</span>
             </NavLink>
           ))}
@@ -72,14 +85,51 @@ export default function AppShell() {
 
       <div className="shell__main">
         <header className="topbar">
+          {/* Mobile hamburger — only rendered via CSS on small screens */}
+          <button
+            className="topbar__hamburger"
+            onClick={() => setNavOpen((o) => !o)}
+            aria-label={navOpen ? "Close menu" : "Open menu"}
+            aria-expanded={navOpen}
+          >
+            <HamburgerIcon open={navOpen} />
+          </button>
           <HeaderInfo />
         </header>
+
+        {/* Mobile nav overlay */}
+        {navOpen && (
+          <div className="mobile-nav-backdrop" onClick={closeNav} aria-hidden />
+        )}
+        <nav className={`mobile-nav ${navOpen ? "mobile-nav--open" : ""}`} aria-label="Main navigation">
+          <div className="mobile-nav__head">
+            <Logo />
+            <button className="icon-btn" onClick={closeNav} aria-label="Close menu">✕</button>
+          </div>
+          {NAV.map((n) => (
+            <NavLink
+              key={n.to}
+              to={n.to}
+              end={n.end}
+              className={({ isActive }) => `mobile-nav__item ${isActive ? "is-active" : ""}`}
+              onClick={closeNav}
+            >
+              <span className="mobile-nav__icon mono" aria-hidden>{n.icon}</span>
+              <span>{n.label}</span>
+            </NavLink>
+          ))}
+          <div className="mobile-nav__who">
+            <span className="shell__whoDot" />
+            <span className="mono">{me?.name ?? "…"}</span>
+          </div>
+        </nav>
+
         <main className="content">
           <Outlet />
         </main>
       </div>
 
-      {/* Mobile quick-log bottom bar — only visible on small screens */}
+      {/* Mobile quick-log bottom bar */}
       <QuickBar onOpen={setSheet} />
       <QuickSheet active={sheet} onClose={() => setSheet(null)} />
     </div>
@@ -99,9 +149,9 @@ function QuickBar({ onOpen }) {
         <span className="qbar__icon mono" aria-hidden>$</span>
         <span className="qbar__label">Expense</span>
       </button>
-      <button className="qbar__btn qbar__btn--accent" onClick={() => onOpen("upskilling")}>
-        <span className="qbar__icon mono" aria-hidden>✦</span>
-        <span className="qbar__label">Upskilling</span>
+      <button className="qbar__btn qbar__btn--accent" onClick={() => onOpen("habits")}>
+        <span className="qbar__icon mono" aria-hidden>✓</span>
+        <span className="qbar__label">Habits</span>
       </button>
     </div>
   );
@@ -121,7 +171,7 @@ function QuickSheet({ active, onClose }) {
 
   if (!active) return null;
 
-  const titles = { workout: "Log a set", expense: "Log an expense", upskilling: "Daily review" };
+  const titles = { workout: "Log a set", expense: "Log an expense", habits: "Daily habits" };
 
   return (
     <div className="qsheet-backdrop" ref={ref} onClick={onBackdrop}>
@@ -132,9 +182,9 @@ function QuickSheet({ active, onClose }) {
           <button className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
         </header>
         <div className="qsheet__body">
-          {active === "workout"    && <QuickWorkout onDone={onClose} />}
-          {active === "expense"    && <QuickExpense onDone={onClose} />}
-          {active === "upskilling" && <QuickUpskilling onDone={onClose} />}
+          {active === "workout" && <QuickWorkout onDone={onClose} />}
+          {active === "expense" && <QuickExpense onDone={onClose} />}
+          {active === "habits"  && <QuickHabits />}
         </div>
       </div>
     </div>
@@ -266,28 +316,76 @@ function QuickExpense({ onDone }) {
   );
 }
 
-function QuickUpskilling({ onDone }) {
-  const [lesson, setLesson] = useState(null);
+function QuickHabits() {
+  const [habits, setHabits] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [logging, setLogging] = useState({});
 
   useEffect(() => {
-    api.get("/upskilling/today").then(setLesson).catch(() => {}).finally(() => setLoading(false));
+    api.get("/habits").then(setHabits).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
+  const toggle = async (habit) => {
+    if (logging[habit.id]) return;
+    setLogging((p) => ({ ...p, [habit.id]: true }));
+    const wasDone = habit.today_done;
+    // Optimistic update
+    setHabits((prev) =>
+      prev.map((h) => h.id === habit.id ? { ...h, today_done: !wasDone } : h)
+    );
+    try {
+      if (!wasDone) {
+        await api.post("/habits/log", { habit_id: habit.id, value: 1 });
+      }
+      // No un-log endpoint; leave optimistic state if already done
+    } catch {
+      // Revert on failure
+      setHabits((prev) =>
+        prev.map((h) => h.id === habit.id ? { ...h, today_done: wasDone } : h)
+      );
+    } finally {
+      setLogging((p) => ({ ...p, [habit.id]: false }));
+    }
+  };
+
+  if (loading) return <p className="qup__hint">Loading habits…</p>;
+  if (!habits.length) return <p className="qup__hint">No habits set up yet. Add them on the Dashboard.</p>;
+
+  const done = habits.filter((h) => h.today_done).length;
+
   return (
-    <div className="qup">
-      {loading ? (
-        <p className="qup__hint">Loading today's topic…</p>
-      ) : !lesson ? (
-        <p className="qup__hint">Could not load lesson.</p>
-      ) : (
-        <>
-          <div className="qup__meta mono">{lesson.domain} · {lesson.level}</div>
-          <p className="qup__topic">{lesson.topic}</p>
-          <p className="qup__hint">Open the Upskilling page for the full lesson and flashcard review.</p>
-        </>
+    <div className="qhab">
+      <div className="qhab__progress">
+        <div className="qhab__prog-bar">
+          <div
+            className="qhab__prog-fill"
+            style={{ width: `${habits.length ? (done / habits.length) * 100 : 0}%` }}
+          />
+        </div>
+        <span className="qhab__prog-label mono">{done}/{habits.length}</span>
+      </div>
+      <ul className="qhab__list">
+        {habits.map((h) => (
+          <li key={h.id}>
+            <button
+              className={`qhab__item ${h.today_done ? "qhab__item--done" : ""}`}
+              onClick={() => toggle(h)}
+              disabled={logging[h.id]}
+            >
+              <span className={`qhab__check ${h.today_done ? "qhab__check--done" : ""}`} aria-hidden>
+                {h.today_done ? "✓" : "○"}
+              </span>
+              <span className="qhab__name">{h.name}</span>
+              {h.streak > 1 && (
+                <span className="qhab__streak mono">{h.streak}🔥</span>
+              )}
+            </button>
+          </li>
+        ))}
+      </ul>
+      {done === habits.length && habits.length > 0 && (
+        <p className="qhab__all-done">All done today! 🎉</p>
       )}
-      <button className="qform__submit" onClick={onDone}>Got it</button>
     </div>
   );
 }
@@ -310,12 +408,17 @@ function HeaderInfo() {
     };
   }, []);
 
+  const shortDate = now.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
   return (
     <div className="header-info">
       <div className="header-date">
-        <span className="header-date__dow">
+        {/* Desktop: full weekday name */}
+        <span className="header-date__dow header-date__dow--desktop">
           {now.toLocaleDateString("en-US", { weekday: "long" })}
         </span>
+        {/* Mobile: compact "Jul 4" */}
+        <span className="header-date__dow header-date__dow--mobile mono">{shortDate}</span>
         <span className="header-date__full mono">
           {now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
         </span>

@@ -502,4 +502,25 @@
   .screentime-cycle__hint {
     display: none;
   }
+  .fin-cell {
+    padding: 12px;
+  }
+  .fin-cell__value {
+    font-size: 1rem;
+  }
+  .yt__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .dash__title h1 {
+    font-size: 1.3rem;
+  }
+  .consistency__stats {
+    flex-direction: column;
+  }
+  .habit-list {
+    gap: 2px;
+  }
+  .habit__check {
+    min-height: 40px;
+  }
 }
