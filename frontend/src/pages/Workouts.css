@@ -1,0 +1,175 @@
+.wo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gutter);
+}
+.wo__title h1 {
+  font-size: clamp(1.5rem, 4vw, 2rem);
+}
+.wo__sub {
+  margin: 4px 0 0;
+  color: var(--ink-faint);
+  font-size: 0.9rem;
+}
+.wo__cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gutter);
+}
+
+.time-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.time-input input {
+  width: 90px;
+  text-align: center;
+}
+.time-input span {
+  color: var(--ink-faint);
+}
+
+/* Goals */
+.goals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.goal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 6px;
+  border-bottom: 1px solid var(--border);
+}
+.goal:last-child {
+  border-bottom: none;
+}
+.goal__name {
+  font-weight: 500;
+}
+.goal__target {
+  color: var(--primary);
+  font-weight: 600;
+}
+.goal-edit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.goal-edit__name {
+  font-weight: 500;
+  min-width: 80px;
+}
+.goal-edit__lift {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.goal-edit__lift input,
+.goal-edit .time-input input {
+  width: 84px;
+  text-align: center;
+}
+.goal-edit__lift span {
+  color: var(--ink-faint);
+}
+
+/* Exercise progress */
+.exprog__metric {
+  margin: -4px 0 12px;
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+}
+.exprog__hint {
+  margin: 10px 0 0;
+  font-size: 0.74rem;
+  color: var(--ink-faint);
+  text-align: center;
+}
+
+/* Group chips */
+.grp {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.grp--push {
+  color: var(--primary-hi);
+  background: var(--primary-dim);
+}
+.grp--pull {
+  color: var(--gain);
+  background: var(--gain-dim);
+}
+.grp--legs {
+  color: var(--warn);
+  background: oklch(0.82 0.14 85 / 0.16);
+}
+.grp--run {
+  color: oklch(0.7 0.13 250);
+  background: oklch(0.7 0.13 250 / 0.16);
+}
+
+/* History scroll container */
+.wo-history__scroll {
+  max-height: 420px;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+/* Volume trend sparklines */
+.vol__hint {
+  margin: -4px 0 14px;
+  font-size: 0.74rem;
+  color: var(--ink-faint);
+}
+.vol__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+.vol__card {
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.vol__card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+.vol__name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+.vol__latest {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ink);
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.vol__delta {
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.vol__delta--up { color: var(--gain); }
+.vol__delta--dn { color: var(--loss); }
+
+@media (max-width: 860px) {
+  .wo__cols {
+    grid-template-columns: 1fr;
+  }
+}

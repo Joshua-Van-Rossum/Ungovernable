@@ -1,0 +1,423 @@
+/* App shell: always-visible sidebar; slim icon-only rail on narrow screens. */
+.shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+}
+
+/* ----- Sidebar ----- */
+.shell__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 14px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+.shell__brand {
+  padding: 6px 8px 14px;
+}
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+.logo__word {
+  font-weight: 700;
+  font-size: 1.02rem;
+  letter-spacing: -0.02em;
+}
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nav__item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+}
+.nav__item:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.nav__item.is-active {
+  background: var(--primary-dim);
+  color: var(--primary-hi);
+}
+.nav__icon {
+  width: 18px;
+  text-align: center;
+  font-size: 0.95rem;
+  opacity: 0.9;
+}
+.shell__who {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+  border-top: 1px solid var(--border);
+}
+.shell__whoDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gain);
+  box-shadow: 0 0 0 3px var(--gain-dim);
+}
+
+/* ----- Main column ----- */
+.shell__main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  padding: 14px var(--gutter);
+  background: oklch(1 0 0 / 0.82);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+.content {
+  padding: var(--gutter);
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ----- Header info (large date + weather) ----- */
+.header-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+}
+.header-date {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.header-date__dow {
+  font-size: clamp(1.15rem, 2.6vw, 1.55rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  line-height: 1.05;
+}
+.header-date__full {
+  font-size: 0.9rem;
+  color: var(--ink-muted);
+}
+.header-weather {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.header-weather__temp {
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--primary);
+  letter-spacing: -0.03em;
+}
+.header-weather__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.header-weather__desc {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.header-weather__sub {
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+}
+
+/* ----- Narrow screens: sidebar collapses to a slim icon rail (no hamburger) ----- */
+@media (max-width: 760px) {
+  .shell {
+    grid-template-columns: 64px 1fr;
+  }
+  .shell__nav {
+    padding: 14px 8px;
+    align-items: center;
+  }
+  .shell__brand {
+    padding: 4px 0 12px;
+  }
+  .logo__word {
+    display: none;
+  }
+  .nav__item {
+    justify-content: center;
+    padding: 11px 0;
+    width: 48px;
+  }
+  .nav__label {
+    display: none;
+  }
+  .nav__icon {
+    font-size: 1.15rem;
+  }
+  .shell__who span:last-child {
+    display: none;
+  }
+  .shell__who {
+    justify-content: center;
+  }
+  .header-weather__sub {
+    display: none;
+  }
+}
+@media (max-width: 440px) {
+  .header-date__full {
+    display: none;
+  }
+}
+
+/* ─────────────────────────────── Mobile quick-log bar ─── */
+.qbar {
+  display: none; /* shown only at ≤640px via media query below */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-sticky);
+  background: oklch(1 0 0 / 0.92);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--border);
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  gap: 8px;
+  justify-content: stretch;
+}
+
+.qbar__btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--ink-muted);
+  transition: background 0.14s, border-color 0.14s, color 0.14s;
+}
+
+.qbar__btn:active {
+  background: var(--surface-3);
+}
+
+.qbar__btn--accent {
+  border-color: var(--primary-dim);
+  color: var(--primary);
+  background: var(--primary-dim);
+}
+
+.qbar__btn--accent:active {
+  background: oklch(0.62 0.19 36 / 0.2);
+}
+
+.qbar__icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.qbar__label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* ─────────────────────────────── Bottom sheet ─── */
+.qsheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: oklch(0.15 0.01 240 / 0.35);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: flex-end;
+  animation: fadeIn 0.18s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+}
+
+.qsheet {
+  width: 100%;
+  background: var(--surface);
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  border-top: 1px solid var(--border);
+  padding: 0 0 calc(16px + env(safe-area-inset-bottom));
+  animation: slideUp 0.26s var(--ease-out-expo);
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+}
+
+.qsheet__handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--border-strong);
+  margin: 10px auto 0;
+}
+
+.qsheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.qsheet__head h3 {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.qsheet__body {
+  padding: 18px;
+}
+
+/* ─────────────────────────────── Quick forms ─── */
+.qform {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.qform__row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.qform__label {
+  font-size: 0.76rem;
+  color: var(--ink-faint);
+  font-weight: 500;
+}
+
+.qform__input {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  font-size: 0.96rem;
+  width: 100%;
+}
+
+.qform__input:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.qform__time {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qform__time .qform__input {
+  flex: 1;
+  text-align: center;
+}
+
+.qform__time span {
+  color: var(--ink-faint);
+  font-weight: 500;
+}
+
+.qform__err {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--loss);
+}
+
+.qform__submit {
+  padding: 13px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--r-md);
+  font-size: 0.95rem;
+  font-weight: 700;
+  transition: background 0.14s, opacity 0.14s;
+}
+
+.qform__submit:hover {
+  background: var(--primary-hi);
+}
+
+.qform__submit:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* Quick upskilling snapshot */
+.qup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.qup__meta {
+  font-size: 0.74rem;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.qup__topic {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.qup__hint {
+  font-size: 0.82rem;
+  color: var(--ink-faint);
+  margin: 0 0 6px;
+  line-height: 1.5;
+}
+
+/* Show the quick bar only on phones */
+@media (max-width: 640px) {
+  .qbar {
+    display: flex;
+  }
+  /* Push content up so last items aren't hidden under the bar */
+  .content {
+    padding-bottom: calc(var(--gutter) + 80px + env(safe-area-inset-bottom));
+  }
+}

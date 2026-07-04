@@ -1,0 +1,5 @@
+# Production-only dependencies (Azure App Service + Azure Database for PostgreSQL).
+# Install alongside requirements.txt in the deploy image / build step:
+#   pip install -r requirements.txt -r requirements-prod.txt
+-r requirements.txt
+psycopg2-binary==2.9.9

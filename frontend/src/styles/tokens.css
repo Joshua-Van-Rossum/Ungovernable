@@ -1,0 +1,147 @@
+/* Ungovernable design tokens — light "studio" theme, ember accent. See DESIGN.md.
+   Surface is pure white; all warmth lives in --primary (orange), not the bg. */
+:root {
+  /* Surfaces (white bg; subtle cool-gray steps for panels/inputs) */
+  --bg: oklch(1 0 0);
+  --surface: oklch(1 0 0);
+  --surface-2: oklch(0.975 0.002 240);
+  --surface-3: oklch(0.95 0.003 240);
+  --border: oklch(0.91 0.004 240);
+  --border-strong: oklch(0.83 0.006 240);
+
+  /* Ink (near-black; muted/faint kept dark enough for ≥4.5:1 on white) */
+  --ink: oklch(0.22 0.005 240);
+  --ink-muted: oklch(0.46 0.008 240);
+  --ink-faint: oklch(0.58 0.008 240);
+
+  /* Brand ember + signal (deepened for contrast on a light surface) */
+  --primary: oklch(0.62 0.19 36);
+  --primary-hi: oklch(0.55 0.2 35);
+  --primary-dim: oklch(0.62 0.19 36 / 0.12);
+  --gain: oklch(0.55 0.15 152);
+  --gain-dim: oklch(0.55 0.15 152 / 0.13);
+  --loss: oklch(0.55 0.21 27);
+  --loss-dim: oklch(0.55 0.21 27 / 0.12);
+  --warn: oklch(0.62 0.13 70);
+
+  /* Commit-grid intensity ramp (near-white → green) */
+  --grid-0: oklch(0.94 0.003 240);
+  --grid-1: oklch(0.84 0.08 152);
+  --grid-2: oklch(0.72 0.12 152);
+  --grid-3: oklch(0.62 0.14 152);
+  --grid-4: oklch(0.52 0.15 152);
+
+  /* Type */
+  --font-ui: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", "Menlo", monospace;
+
+  /* Radii & shadow (lighter, softer shadows for a light surface) */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --shadow-1: 0 1px 2px oklch(0.5 0.02 240 / 0.08);
+  --shadow-2: 0 10px 34px oklch(0.45 0.03 240 / 0.16);
+
+  /* Spacing rhythm */
+  --gutter: clamp(16px, 4vw, 28px);
+
+  /* z-scale (semantic) */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-backdrop: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+
+  /* Motion */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+  color: var(--ink);
+}
+
+::selection {
+  background: var(--primary-dim);
+}
+
+/* Focus ring */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: 99px;
+  border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

@@ -1,0 +1,32 @@
+.house {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.house__svg {
+  width: 160px;
+  height: auto;
+  flex-shrink: 0;
+}
+.house__callout {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.house__pct {
+  font-size: 2.2rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--gain);
+}
+.house__label {
+  font-size: 0.8rem;
+  color: var(--ink-faint);
+  text-transform: lowercase;
+}
+.house__nums {
+  margin-top: 8px;
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+}

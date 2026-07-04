@@ -1,0 +1,44 @@
+version: "3.8"
+
+# One command to run everything locally:  docker compose up
+# Backend (SQLite, seeded) on :8000, Vite dev server on :5173.
+# Open http://localhost:5173.
+#
+# Production runs the single FastAPI app (serving the built SPA) on App Service;
+# this compose file is for local development only.
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - API_TITLE=Ungovernable API
+    command: sh -c "python seed.py --demo && python run.py"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      # Anonymous volume keeps the container's Linux node_modules, so your host
+      # install (Windows binaries) doesn't shadow it.
+      - /app/node_modules
+    environment:
+      # In-network the backend is reachable by service name, not localhost.
+      - VITE_API_TARGET=http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: npm run dev -- --host
