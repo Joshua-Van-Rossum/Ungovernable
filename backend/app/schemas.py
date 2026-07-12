@@ -1,5 +1,5 @@
 """Pydantic schemas for request/response validation."""
-from datetime import date, datetime
+from datetime import date as date_, datetime
 from decimal import Decimal
 from typing import Optional
 
@@ -15,7 +15,7 @@ class ExpenseBase(BaseModel):
     subcategory: Optional[str] = None
     recurring: bool = False
     note: Optional[str] = None
-    date: Optional[date] = None
+    date: Optional[date_] = None
 
 
 class ExpenseCreate(ExpenseBase):
@@ -25,7 +25,7 @@ class ExpenseCreate(ExpenseBase):
 class Expense(ExpenseBase):
     model_config = ConfigDict(from_attributes=True)
     id: int
-    date: date
+    date: date_
     created_at: datetime
 
 
@@ -84,7 +84,7 @@ class Habit(BaseModel):
 
 class HabitLogIn(BaseModel):
     habit_id: int
-    date: Optional[date] = None
+    date: Optional[date_] = None
     done: Optional[bool] = None
     value: Optional[float] = None
 
@@ -93,7 +93,7 @@ class HabitLog(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     habit_id: int
-    date: date
+    date: date_
     done: bool
     value: Optional[float] = None
 
@@ -139,7 +139,7 @@ class WorkoutGoalIn(BaseModel):
     target_weight: Optional[float] = None
     target_reps: Optional[int] = None
     target_seconds: Optional[int] = None
-    target_date: Optional[date] = None
+    target_date: Optional[date_] = None
 
 
 class WorkoutGoal(BaseModel):
@@ -149,13 +149,13 @@ class WorkoutGoal(BaseModel):
     target_weight: Optional[float] = None
     target_reps: Optional[int] = None
     target_seconds: Optional[int] = None
-    target_date: date
+    target_date: date_
 
 
 class WorkoutEntryIn(BaseModel):
     exercise: str
     group: Optional[str] = None  # inferred if omitted
-    date: Optional[date] = None
+    date: Optional[date_] = None
     weight: Optional[float] = None
     reps: Optional[int] = None
     seconds: Optional[int] = None
@@ -169,7 +169,7 @@ class WorkoutEntryIn(BaseModel):
 class WorkoutEntry(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
-    date: date
+    date: date_
     group: str
     exercise: str
     weight: Optional[float] = None
@@ -182,7 +182,7 @@ class WorkoutEntry(BaseModel):
 # Dashboard / aggregate responses (loose shapes; built ad-hoc in routers)
 # --------------------------------------------------------------------------- #
 class CommitCell(BaseModel):
-    date: date
+    date: date_
     count: int
 
 
