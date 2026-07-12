@@ -19,6 +19,11 @@ async function request(path, { method = "GET", body, params } = {}) {
     let detail;
     try {
       detail = (await res.json()).detail;
+      if (Array.isArray(detail)) {
+        detail = detail.map((d) => d.msg || JSON.stringify(d)).join("; ");
+      } else if (detail && typeof detail === "object") {
+        detail = JSON.stringify(detail);
+      }
     } catch {
       detail = res.statusText;
     }

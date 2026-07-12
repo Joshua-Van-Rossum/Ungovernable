@@ -66,6 +66,7 @@ function LogEntry({ onAdded }) {
   const submit = async (e) => {
     e.preventDefault();
     setErr("");
+    if (!date) return setErr("Pick a date.");
     const body = { exercise, date };
     if (isRun) {
       const total = Number(mins || 0) * 60 + Number(secs || 0);

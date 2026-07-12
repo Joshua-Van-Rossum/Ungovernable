@@ -3,7 +3,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # --------------------------------------------------------------------------- #
@@ -159,6 +159,11 @@ class WorkoutEntryIn(BaseModel):
     weight: Optional[float] = None
     reps: Optional[int] = None
     seconds: Optional[int] = None
+
+    @field_validator("date", mode="before")
+    @classmethod
+    def _blank_date_to_none(cls, v):
+        return v or None
 
 
 class WorkoutEntry(BaseModel):
