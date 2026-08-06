@@ -53,14 +53,14 @@ export default function Finance() {
         <button
           className="btn btn--primary fin__audit-btn"
           onClick={() => setAuditOpen(true)}
-          disabled={monthExists}
           title={
             monthExists
-              ? `${due ? MONTHS[due.month - 1] : ""} ${due?.year ?? ""} is already recorded`
+              ? `Edit ${due ? MONTHS[due.month - 1] : ""} ${due?.year ?? ""}'s recorded balances`
               : "Record this month's audit"
           }
         >
-          <span aria-hidden>＋</span> New month audit
+          <span aria-hidden>{monthExists ? "✎" : "＋"}</span>{" "}
+          {monthExists ? "Edit this month" : "New month audit"}
         </button>
       </header>
 
@@ -820,23 +820,27 @@ function AuditModal({ open, due, onClose, onDone }) {
   });
   const [busy, setBusy] = useState(false);
 
-  // Prefill from the latest month when opening.
+  // Prefill from this month's row if it already exists (editing), otherwise
+  // carry forward the most recent prior month's balances (new-month audit).
   useEffect(() => {
-    if (!open) return;
+    if (!open || !due) return;
     api.get("/finance/months").then((rows) => {
-      const last = rows[rows.length - 1];
-      if (last) {
+      const current = rows.find((r) => r.year === due.year && r.month === due.month);
+      const source = current || rows[rows.length - 1];
+      if (source) {
         setForm((f) => ({
           ...f,
-          total_cash: last.total_cash,
-          investments: last.investments,
-          debt: last.debt,
-          balance_401k: last.balance_401k,
-          home_equity: last.home_equity,
+          total_cash: source.total_cash,
+          investments: source.investments,
+          debt: source.debt,
+          balance_401k: source.balance_401k,
+          home_equity: source.home_equity,
+          monthly_gain: current ? source.monthly_gain : f.monthly_gain,
+          monthly_loss: current ? source.monthly_loss : f.monthly_loss,
         }));
       }
     }).catch(() => {});
-  }, [open]);
+  }, [open, due]);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -866,10 +870,16 @@ function AuditModal({ open, due, onClose, onDone }) {
     Number(form.total_cash || 0) + Number(form.investments || 0) +
     Number(form.balance_401k || 0) - Number(form.debt || 0);
 
+  const editing = due && !due.due;
+
   return (
-    <Modal open={open} onClose={onClose} title={`Audit · ${due ? MONTHS[due.month - 1] : ""} ${due?.year ?? ""}`} wide>
+    <Modal open={open} onClose={onClose} title={`${editing ? "Edit" : "Audit"} · ${due ? MONTHS[due.month - 1] : ""} ${due?.year ?? ""}`} wide>
       <form className="form-grid" onSubmit={submit}>
-        <p className="audit-intro">Confirm your account balances to open the new month. Net worth is computed automatically.</p>
+        <p className="audit-intro">
+          {editing
+            ? "Update this month's recorded balances. Net worth is computed automatically."
+            : "Confirm your account balances to open the new month. Net worth is computed automatically."}
+        </p>
         <div className="audit-grid">
           {[
             ["total_cash", "Total cash"],
@@ -890,7 +900,7 @@ function AuditModal({ open, due, onClose, onDone }) {
           <span className="mono strong">{fmtMoney(networth)}</span>
         </div>
         <button className="btn btn--primary" disabled={busy}>
-          {busy ? "Saving…" : "Record month"}
+          {busy ? "Saving…" : editing ? "Save changes" : "Record month"}
         </button>
       </form>
     </Modal>

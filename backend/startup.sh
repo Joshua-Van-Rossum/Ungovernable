@@ -11,7 +11,9 @@ pip install -r requirements.txt --quiet
 # /home is the only persistent volume on App Service Linux.
 mkdir -p /home/data
 
-# Seed habits/goals on first boot (idempotent).
+# Seed habits/goals/starter finance on first boot (idempotent — see seed.py
+# for why finance seeding only fires on a truly empty table, not merely a
+# missing row for the current month).
 python seed.py || true
 
 # Bind to the port App Service provides.

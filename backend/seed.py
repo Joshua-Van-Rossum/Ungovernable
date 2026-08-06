@@ -52,9 +52,13 @@ def seed_goals(db):
 
 
 def seed_starter_finance(db):
-    """One current-month snapshot so KPIs and the equity house render."""
+    """One starter snapshot so KPIs and the equity house render on a brand-new
+    database. Only fires when the table is completely empty — must NOT check
+    just the current month, since that would re-insert placeholder defaults
+    over real data every time the app restarts after the calendar rolls into
+    a new month with no audit recorded yet."""
     today = date.today()
-    if db.query(models.MonthlyFinance).filter_by(year=today.year, month=today.month).first():
+    if db.query(models.MonthlyFinance).first():
         return
     db.add(
         models.MonthlyFinance(
