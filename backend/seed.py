@@ -16,16 +16,6 @@ from app import models
 
 Base.metadata.create_all(bind=engine)
 
-HABITS = [
-    # name, kind, unit, target, order
-    ("Read 20m", "check", None, None, 0),
-    ("Personal Project (1h)", "check", None, None, 1),
-    ("Upskilling", "check", None, None, 2),
-    ("Daily Quiz", "check", None, None, 3),
-    ("Stretch Routine", "check", None, None, 4),
-    ("Screen time", "number", "hours", None, 5),
-]
-
 # Goals -> default target_date is 12/31 of the current year (set below).
 GOALS = [
     {"exercise": "bench", "target_weight": 225, "target_reps": 2},
@@ -34,13 +24,6 @@ GOALS = [
     {"exercise": "1mile", "target_seconds": 7 * 60},          # 7:00
     {"exercise": "5k", "target_seconds": 24 * 60 + 30},        # 24:30
 ]
-
-
-def seed_habits(db):
-    for name, kind, unit, target, order in HABITS:
-        if not db.query(models.Habit).filter_by(name=name).first():
-            db.add(models.Habit(name=name, kind=kind, unit=unit, target=target, sort_order=order))
-    db.commit()
 
 
 def seed_goals(db):
@@ -141,34 +124,19 @@ def seed_demo_history(db):
                                        weight=0, reps=6 + (26 - wk) // 4))
             db.add(models.WorkoutEntry(date=day, group="Run", exercise="1mile",
                                        seconds=8 * 60 + 30 - (26 - wk) * 3))
-
-    # App visits + habit logs for the commit grid.
-    if db.query(models.AppVisit).count() == 0:
-        habits = db.query(models.Habit).all()
-        for d in range(120):
-            day = today - timedelta(days=d)
-            if rng.random() < 0.75:
-                db.add(models.AppVisit(date=day, count=rng.randint(1, 4)))
-                for h in habits:
-                    if h.kind == "number":
-                        db.add(models.HabitLog(habit_id=h.id, date=day,
-                                               value=round(rng.uniform(2.5, 7.5), 1)))
-                    elif rng.random() < 0.6:
-                        db.add(models.HabitLog(habit_id=h.id, date=day, done=True))
     db.commit()
 
 
 def main():
     db = SessionLocal()
     try:
-        seed_habits(db)
         seed_goals(db)
         seed_starter_finance(db)
         if "--demo" in sys.argv:
             seed_demo_history(db)
-            print("Seeded habits, goals, finance + demo history.")
+            print("Seeded goals, finance + demo history.")
         else:
-            print("Seeded habits, goals, and starter finance. (Use --demo for sample charts.)")
+            print("Seeded goals and starter finance. (Use --demo for sample charts.)")
     finally:
         db.close()
 

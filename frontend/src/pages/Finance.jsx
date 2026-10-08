@@ -4,6 +4,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Customized,
   LabelList,
   Line,
   LineChart,
@@ -266,11 +267,12 @@ function SavingsRateChart() {
   );
 }
 
-/* ------------------------------------------------ 3-slide carousel */
+/* ------------------------------------------------ 4-slide carousel */
 const SLIDES = [
   { key: "equity", label: "Home equity" },
   { key: "report", label: "Expense report" },
   { key: "progress", label: "Progress over time" },
+  { key: "projection", label: "Month projection" },
 ];
 
 function FinanceCarousel({ refresh, onChange }) {
@@ -309,6 +311,7 @@ function FinanceCarousel({ refresh, onChange }) {
             <MonthlyTable refresh={refresh} />
           </>
         )}
+        {i === 3 && <ProjectionPanel refresh={refresh} />}
       </div>
     </section>
   );
@@ -495,17 +498,22 @@ function ExpenseReport({ refresh }) {
     ? `${MONTHS[new Date(data.window.start).getMonth()]} ${new Date(data.window.start).getFullYear()} → ${MONTHS[end.month - 1]} ${end.year}`
     : "";
 
+  const amountLabel = (v) => (v >= 1000 ? `$${(v / 1000).toFixed(1)}k` : `$${Math.round(v)}`);
+
   return (
     <Panel
       title="Expense report"
       className="report"
       action={
         <div className="report__controls">
-          <Segmented
-            size="sm"
-            options={[{ value: 6, label: "6m" }, { value: 12, label: "12m" }, { value: 24, label: "24m" }]}
+          <input
+            type="number"
+            min={1}
+            max={60}
+            className="mono report__months-input"
             value={months}
-            onChange={setMonths}
+            onChange={(e) => setMonths(Math.min(60, Math.max(1, Number(e.target.value) || 1)))}
+            aria-label="Number of months"
           />
           <div className="arrows">
             <button className="icon-btn" onClick={() => setOffset((o) => o + months)} aria-label="Earlier">←</button>
@@ -545,13 +553,20 @@ function ExpenseReport({ refresh }) {
         <EmptyState title="No expenses in this window" />
       ) : (
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={data.data} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+          <BarChart data={data.data} margin={{ top: 20, right: 8, bottom: 8, left: 8 }}>
             <CartesianGrid stroke="var(--border)" vertical={false} />
             <XAxis dataKey="label" tick={{ fill: "var(--ink-faint)", fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={60} />
             <YAxis tick={{ fill: "var(--ink-faint)", fontSize: 11 }} tickFormatter={(v) => `$${v >= 1000 ? (v / 1000).toFixed(0) + "k" : v}`} />
             <Tooltip content={<DarkTooltip money />} cursor={{ fill: "var(--surface-2)" }} />
             <Bar dataKey="amount" radius={[5, 5, 0, 0]} cursor={!drill ? "pointer" : "default"}
               onClick={(d) => !drill && d && setDrill(d.label)}>
+              <LabelList
+                dataKey="amount"
+                position="top"
+                formatter={amountLabel}
+                fill="var(--ink-muted)"
+                fontSize={11}
+              />
               {data.data.map((_, i) => (
                 <Cell key={i} fill="var(--primary)" />
               ))}
@@ -809,6 +824,159 @@ function MonthlyTable({ refresh }) {
         </div>
       )}
     </Panel>
+  );
+}
+
+/* ----------------------------------------------- Month-end projection */
+function ProjectionPanel({ refresh }) {
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    api.get("/finance/projection").then(setData).catch(() => setData(null));
+  }, [refresh]);
+
+  if (!data) {
+    return (
+      <Panel title="Month projection" className="projection">
+        <Spinner />
+      </Panel>
+    );
+  }
+
+  // Only chart categories that have some signal (avg history or spend so far);
+  // a category with neither is noise on the chart.
+  const rows = data.categories
+    .filter((c) => c.avg_monthly > 0 || c.spent_so_far > 0)
+    .sort((a, b) => b.projected_total - a.projected_total);
+
+  const onTrack = data.projected_total <= rows.reduce((s, c) => s + c.avg_monthly, 0);
+
+  return (
+    <Panel
+      title="Month projection"
+      className="projection"
+      action={<span className="projection__days mono">{data.days_remaining}d left in month</span>}
+    >
+      <div className="projection__headline">
+        <div className="projection__stat">
+          <span className="projection__statLabel">Spent so far</span>
+          <span className="projection__statValue mono">{fmtMoney(data.spent_so_far_total)}</span>
+        </div>
+        <div className="projection__stat">
+          <span className="projection__statLabel">On pace for</span>
+          <span
+            className={`projection__statValue mono ${onTrack ? "projection__statValue--good" : "projection__statValue--bad"}`}
+          >
+            {fmtMoney(data.projected_total)}
+          </span>
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <EmptyState title="Not enough history yet" hint="Log a few months of expenses to see a projection." />
+      ) : (
+        <ResponsiveContainer width="100%" height={Math.max(220, rows.length * 42)}>
+          <BarChart
+            data={rows}
+            layout="vertical"
+            margin={{ top: 4, right: 40, bottom: 4, left: 8 }}
+            barCategoryGap={10}
+          >
+            <CartesianGrid stroke="var(--border)" horizontal={false} />
+            <XAxis
+              type="number"
+              tick={{ fill: "var(--ink-faint)", fontSize: 11 }}
+              tickFormatter={(v) => `$${v >= 1000 ? (v / 1000).toFixed(0) + "k" : v}`}
+            />
+            <YAxis
+              type="category"
+              dataKey="category"
+              tick={{ fill: "var(--ink-muted)", fontSize: 11 }}
+              width={110}
+            />
+            <Tooltip content={<ProjectionTooltip />} cursor={{ fill: "var(--surface-2)" }} />
+            <Bar dataKey="projected_total" name="Projected total" radius={[0, 4, 4, 0]} barSize={14}>
+              {rows.map((r, i) => (
+                <Cell key={i} fill={r.over_budget ? "var(--loss)" : "var(--primary)"} />
+              ))}
+              <LabelList
+                dataKey="projected_total"
+                position="right"
+                formatter={(v) => fmtMoney(v)}
+                fill="var(--ink-muted)"
+                fontSize={11}
+              />
+            </Bar>
+            <Customized component={<SpentSoFarOverlay rows={rows} />} />
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+      <p className="projection__hint">
+        Black marker = spent so far · <span className="projection__hintLoss">red</span> bar = already over the typical month ·{" "}
+        <span className="projection__hintGain">ember</span> bar = projected, still on pace. Typical = trailing 6-month average per category.
+      </p>
+    </Panel>
+  );
+}
+
+function ProjectionTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  return (
+    <div className="rtt">
+      <div className="rtt__label">{label}</div>
+      <div className="rtt__row mono">Spent so far: {fmtMoney(d.spent_so_far)}</div>
+      <div className="rtt__row mono">Typical month: {fmtMoney(d.avg_monthly)}</div>
+      <div className="rtt__row mono">
+        Projected: {fmtMoney(d.projected_total)}
+        {d.over_budget && <span className="projection__hintLoss"> · over typical</span>}
+      </div>
+    </div>
+  );
+}
+
+// Draws a thin black vertical tick directly on top of each category's
+// projected-total bar, at the "spent so far" x-position, plus a black-pill
+// white-text label with the dollar value next to the tick. Implemented as a
+// <Customized> overlay (rather than a second grouped <Bar>) so it reads the
+// chart's real x/y scales directly and is guaranteed to land on the same
+// row and in front of the bar, instead of Recharts allocating the marker
+// its own sub-band the way un-stacked grouped bars normally split a row.
+function SpentSoFarOverlay({ rows, xAxisMap, yAxisMap }) {
+  const xAxis = xAxisMap && Object.values(xAxisMap)[0];
+  const yAxis = yAxisMap && Object.values(yAxisMap)[0];
+  if (!xAxis || !yAxis) return null;
+  const xScale = xAxis.scale;
+  const yScale = yAxis.scale;
+  const bandHeight = typeof yScale.bandwidth === "function" ? yScale.bandwidth() : 14;
+  const barHeight = 14;
+
+  return (
+    <g>
+      {rows.map((r) => {
+        if (r.spent_so_far == null) return null;
+        const x = xScale(r.spent_so_far);
+        const bandY = yScale(r.category);
+        if (x == null || bandY == null) return null;
+        const y = bandY + (bandHeight - barHeight) / 2;
+        const label = fmtMoney(r.spent_so_far);
+        const labelWidth = Math.max(34, label.length * 6.5 + 12);
+        const cy = y + barHeight / 2;
+        const nearEnd = r.projected_total > 0 && r.spent_so_far / r.projected_total > 0.82;
+        const labelX = nearEnd ? x - 6 - labelWidth : x + 6;
+        return (
+          <g key={r.category}>
+            <line x1={x} y1={y - 2} x2={x} y2={y + barHeight + 2} stroke="#111" strokeWidth={2} />
+            <g transform={`translate(${labelX}, ${cy - 8})`}>
+              <rect width={labelWidth} height={16} rx={8} fill="#111" />
+              <text x={labelWidth / 2} y={11} textAnchor="middle" fontSize={10} fontWeight={600} fill="#fff">
+                {label}
+              </text>
+            </g>
+          </g>
+        );
+      })}
+    </g>
   );
 }
 

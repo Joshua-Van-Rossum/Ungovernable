@@ -323,6 +323,12 @@
   padding: 6px 28px 6px 10px;
   font-size: 0.8rem;
 }
+.report__months-input {
+  width: 52px;
+  padding: 6px 8px;
+  font-size: 0.8rem;
+  text-align: center;
+}
 .report__top {
   display: flex;
   align-items: flex-start;
@@ -376,6 +382,51 @@
   font-size: 0.74rem;
   color: var(--ink-faint);
   text-align: center;
+}
+
+/* Month projection */
+.projection__days {
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+}
+.projection__headline {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.projection__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.projection__statLabel {
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+}
+.projection__statValue {
+  font-size: clamp(1.2rem, 2.6vw, 1.5rem);
+  font-weight: 700;
+  color: var(--ink);
+}
+.projection__statValue--good {
+  color: var(--gain);
+}
+.projection__statValue--bad {
+  color: var(--loss);
+}
+.projection__hint {
+  margin: 10px 0 0;
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+  text-align: center;
+}
+.projection__hintLoss {
+  color: var(--loss);
+}
+.projection__hintGain {
+  color: var(--primary);
 }
 
 /* Tables */

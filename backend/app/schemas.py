@@ -69,69 +69,6 @@ class PaycheckIn(BaseModel):
 
 
 # --------------------------------------------------------------------------- #
-# Habits
-# --------------------------------------------------------------------------- #
-class Habit(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    id: int
-    name: str
-    kind: str
-    unit: Optional[str] = None
-    target: Optional[float] = None
-    sort_order: int
-    active: bool
-
-
-class HabitLogIn(BaseModel):
-    habit_id: int
-    date: Optional[date_] = None
-    done: Optional[bool] = None
-    value: Optional[float] = None
-
-
-class HabitLog(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    id: int
-    habit_id: int
-    date: date_
-    done: bool
-    value: Optional[float] = None
-
-
-class HabitWithToday(Habit):
-    """A habit plus today's log state (for the dashboard tracker)."""
-    today_done: bool = False
-    today_value: Optional[float] = None
-    streak: int = 0
-
-
-# --------------------------------------------------------------------------- #
-# Projects
-# --------------------------------------------------------------------------- #
-class ProjectBase(BaseModel):
-    name: str
-    notes: str = ""
-
-
-class ProjectCreate(BaseModel):
-    name: str
-
-
-class ProjectUpdate(BaseModel):
-    name: Optional[str] = None
-    notes: Optional[str] = None
-    archived: Optional[bool] = None
-
-
-class Project(ProjectBase):
-    model_config = ConfigDict(from_attributes=True)
-    id: int
-    archived: bool
-    sort_order: int
-    updated_at: datetime
-
-
-# --------------------------------------------------------------------------- #
 # Workouts
 # --------------------------------------------------------------------------- #
 class WorkoutGoalIn(BaseModel):
@@ -176,17 +113,3 @@ class WorkoutEntry(BaseModel):
     reps: Optional[int] = None
     seconds: Optional[int] = None
     est_1rm: Optional[float] = None
-
-
-# --------------------------------------------------------------------------- #
-# Dashboard / aggregate responses (loose shapes; built ad-hoc in routers)
-# --------------------------------------------------------------------------- #
-class CommitCell(BaseModel):
-    date: date_
-    count: int
-
-
-class KPISet(BaseModel):
-    networth: float
-    total_cash: float
-    month_spend: float

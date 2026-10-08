@@ -1,8 +1,16 @@
-"""Workouts: goals (default 12/31), best-set entries, per-exercise progress."""
+"""Workouts: goals (default 12/31), best-set entries, per-exercise progress.
+
+Exercise names are free-form text (typed, not picked from a fixed list). An
+entry's type — lift (weight x reps) or run (time) — is inferred from which
+fields are populated on it, never from a hardcoded name list. For an
+*exercise name as a whole* (e.g. for the progress/volume endpoints, where no
+single entry is in hand yet), we infer from how its most recent entry was
+logged.
+"""
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -17,16 +25,35 @@ def _year_end(year: int | None = None) -> date:
     return date(year or date.today().year, 12, 31)
 
 
+def _entry_is_run(e: models.WorkoutEntry) -> bool:
+    """A single entry is a run if it has a time and no weight/reps."""
+    return e.seconds is not None
+
+
 # --------------------------------------------------------------------------- #
 # Catalog
 # --------------------------------------------------------------------------- #
-@router.get("/exercises")
-def exercises():
-    return {
-        "lifts": models.LIFT_EXERCISES,
-        "runs": models.RUN_EXERCISES,
-        "groups": ["Push", "Pull", "Legs", "Run"],
-    }
+@router.get("/exercise-names")
+def exercise_names(db: Session = Depends(get_db)):
+    """Every exercise name ever logged, split by lift/run, for the combobox.
+
+    An exercise's type is taken from its most recently logged entry, so if
+    the owner starts logging an old lift-name with a time instead, future
+    suggestions follow the newer usage.
+    """
+    rows = (
+        db.query(models.WorkoutEntry)
+        .order_by(models.WorkoutEntry.exercise.asc(), models.WorkoutEntry.date.desc())
+        .all()
+    )
+    latest_is_run: dict[str, bool] = {}
+    for e in rows:
+        if e.exercise not in latest_is_run:
+            latest_is_run[e.exercise] = _entry_is_run(e)
+
+    lifts = sorted(ex for ex, is_run in latest_is_run.items() if not is_run)
+    runs = sorted(ex for ex, is_run in latest_is_run.items() if is_run)
+    return {"lifts": lifts, "runs": runs, "groups": ["Push", "Pull", "Legs", "Run", "Other"]}
 
 
 # --------------------------------------------------------------------------- #
@@ -85,14 +112,16 @@ def list_entries(limit: int = 200, db: Session = Depends(get_db)):
 
 @router.post("/entries", response_model=schemas.WorkoutEntry)
 def add_entry(payload: schemas.WorkoutEntryIn, db: Session = Depends(get_db)):
-    is_run = payload.exercise in models.RUN_EXERCISES
+    # The client decides lift-vs-run by which fields it sends (a seconds
+    # value means a run; weight+reps means a lift) — no fixed exercise list.
+    is_run = payload.seconds is not None
     if is_run and not payload.seconds:
         raise HTTPException(400, "Runs require a time (seconds).")
     if not is_run and (not payload.weight or not payload.reps):
         raise HTTPException(400, "Lifts require weight and reps.")
     e = models.WorkoutEntry(
         date=payload.date or date.today(),
-        group=payload.group or logic.infer_group(payload.exercise),
+        group=payload.group or logic.infer_group(payload.exercise, is_run=is_run),
         exercise=payload.exercise,
         weight=payload.weight,
         reps=payload.reps,
@@ -119,13 +148,13 @@ def delete_entry(entry_id: int, db: Session = Depends(get_db)):
 # --------------------------------------------------------------------------- #
 @router.get("/progress/{exercise}")
 def exercise_progress(exercise: str, db: Session = Depends(get_db)):
-    is_run = exercise in models.RUN_EXERCISES
     rows = (
         db.query(models.WorkoutEntry)
         .filter(models.WorkoutEntry.exercise == exercise)
         .order_by(models.WorkoutEntry.date.asc())
         .all()
     )
+    is_run = _entry_is_run(rows[-1]) if rows else False
     series = []
     for e in rows:
         if is_run:
@@ -166,26 +195,29 @@ def exercise_progress(exercise: str, db: Session = Depends(get_db)):
 
 
 @router.get("/volume")
-def volume_trends(db: Session = Depends(get_db)):
-    """Monthly best-effort per exercise for the sparkline grid.
+def volume_trends(limit: int = 6, db: Session = Depends(get_db)):
+    """Monthly best-effort for the most-logged exercises, for the sparkline grid.
 
-    For lifts: best estimated 1RM in the month.
-    For runs: best (lowest) time in the month.
-    Returns one series per tracked exercise, bucketed by YYYY-MM.
+    For lifts: best estimated 1RM in the month. For runs: best (lowest) time
+    in the month. Returns one series per exercise, bucketed by YYYY-MM, for
+    the `limit` exercises with the most logged entries (so new free-form
+    names show up here automatically once logged a few times).
     """
-    tracked = models.LIFT_EXERCISES + ["1mile", "5k"]
     rows = (
         db.query(models.WorkoutEntry)
-        .filter(models.WorkoutEntry.exercise.in_(tracked))
         .order_by(models.WorkoutEntry.date.asc())
         .all()
     )
 
-    # bucket[exercise][YYYY-MM] = best value
+    # bucket[exercise][YYYY-MM] = best value; also track entry counts + type.
     bucket: dict[str, dict[str, float]] = defaultdict(dict)
+    counts: dict[str, int] = defaultdict(int)
+    is_run_by_ex: dict[str, bool] = {}
     for e in rows:
         month = e.date.strftime("%Y-%m")
-        is_run = e.exercise in models.RUN_EXERCISES
+        is_run = _entry_is_run(e)
+        is_run_by_ex[e.exercise] = is_run  # last entry wins, like exercise-names
+        counts[e.exercise] += 1
         if is_run:
             val = e.seconds
             if val is None:
@@ -199,15 +231,128 @@ def volume_trends(db: Session = Depends(get_db)):
             prev = bucket[e.exercise].get(month)
             bucket[e.exercise][month] = max(val, prev) if prev is not None else val
 
+    tracked = sorted(counts, key=lambda ex: counts[ex], reverse=True)[:limit]
+
     result = {}
     for ex in tracked:
         months_data = bucket.get(ex, {})
-        is_run = ex in models.RUN_EXERCISES
         result[ex] = {
-            "is_run": is_run,
+            "is_run": is_run_by_ex.get(ex, False),
             "series": [
                 {"month": m, "value": v}
                 for m, v in sorted(months_data.items())
             ],
         }
     return result
+
+
+# --------------------------------------------------------------------------- #
+# Personal records — a permanent feed of every exercise's all-time best
+# --------------------------------------------------------------------------- #
+@router.get("/prs")
+def personal_records(db: Session = Depends(get_db)):
+    """The all-time best entry per exercise, newest PR first.
+
+    Best = lowest time for a run, highest estimated 1RM for a lift. Ties
+    (e.g. two entries with the same est-1RM) keep the earliest date the
+    value was first achieved.
+    """
+    rows = (
+        db.query(models.WorkoutEntry)
+        .order_by(models.WorkoutEntry.date.asc(), models.WorkoutEntry.id.asc())
+        .all()
+    )
+    best: dict[str, dict] = {}
+    for e in rows:
+        is_run = _entry_is_run(e)
+        value = e.seconds if is_run else logic.estimated_1rm(e.weight, e.reps)
+        if value is None:
+            continue
+        current = best.get(e.exercise)
+        is_better = current is None or (
+            value < current["value"] if is_run else value > current["value"]
+        )
+        if is_better:
+            best[e.exercise] = {
+                "exercise": e.exercise,
+                "is_run": is_run,
+                "value": value,
+                "date": e.date.isoformat(),
+                "weight": e.weight,
+                "reps": e.reps,
+            }
+    return sorted(best.values(), key=lambda r: r["date"], reverse=True)
+
+
+# --------------------------------------------------------------------------- #
+# Push/Pull/Legs/Run balance radar
+# --------------------------------------------------------------------------- #
+@router.get("/balance")
+def balance(window_days: int = 90, db: Session = Depends(get_db)):
+    """Entry counts per training group over a trailing window, for a radar
+    chart showing whether push/pull/legs/running are getting even attention."""
+    start = date.today() - timedelta(days=window_days)
+    rows = (
+        db.query(models.WorkoutEntry)
+        .filter(models.WorkoutEntry.date >= start)
+        .all()
+    )
+    counts: dict[str, int] = defaultdict(int)
+    for e in rows:
+        counts[e.group or "Other"] += 1
+
+    groups = ["Push", "Pull", "Legs", "Run"]
+    return {
+        "window_days": window_days,
+        "groups": [{"group": g, "count": counts.get(g, 0)} for g in groups],
+    }
+
+
+# --------------------------------------------------------------------------- #
+# Streak / consistency stats
+# --------------------------------------------------------------------------- #
+@router.get("/streaks")
+def streaks(db: Session = Depends(get_db)):
+    """Current + longest consecutive-day streak, and workouts/week over the
+    last several weeks, mirroring the day-walking pattern the habit tracker
+    used to use — but keyed off logged workout days instead."""
+    rows = db.query(models.WorkoutEntry.date).distinct().all()
+    days = sorted({r[0] for r in rows})
+    day_set = set(days)
+
+    today = date.today()
+    current_streak = 0
+    cursor = today
+    # Allow "yesterday" to still count today's streak as alive if today has
+    # no entry yet (don't zero out a streak just because it's morning).
+    if cursor not in day_set:
+        cursor -= timedelta(days=1)
+    while cursor in day_set:
+        current_streak += 1
+        cursor -= timedelta(days=1)
+
+    longest_streak = 0
+    run = 0
+    prev = None
+    for d in days:
+        if prev is not None and (d - prev).days == 1:
+            run += 1
+        else:
+            run = 1
+        longest_streak = max(longest_streak, run)
+        prev = d
+
+    # Workouts per week, last 8 weeks (Mon-start buckets), oldest first.
+    weeks = []
+    for w in range(7, -1, -1):
+        week_start = today - timedelta(days=today.weekday() + w * 7)
+        week_end_excl = week_start + timedelta(days=7)
+        count = sum(1 for d in days if week_start <= d < week_end_excl)
+        weeks.append({"week_start": week_start.isoformat(), "count": count})
+
+    return {
+        "current_streak": current_streak,
+        "longest_streak": longest_streak,
+        "total_workout_days": len(days),
+        "weeks": weeks,
+    }

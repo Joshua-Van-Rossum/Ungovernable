@@ -3,6 +3,10 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  PolarAngleAxis,
+  PolarGrid,
+  Radar,
+  RadarChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -14,18 +18,16 @@ import {
   Field,
   Modal,
   Panel,
-  Segmented,
   Spinner,
+  Stat,
 } from "../components/ui";
-import { api, fmtTime } from "../lib/api";
+import { api, fmtDate, fmtTime } from "../lib/api";
 import "./Workouts.css";
 
-const LIFT_LABELS = { bench: "Bench", squat: "Squat", "pull-ups": "Pull-ups" };
-const RUN_LABELS = { "1mile": "1 mile", "5k": "5k" };
-
-const LIFTS = ["bench", "squat", "pull-ups"];
-const RUNS = ["1mile", "2mile", "3mile", "4mile", "5mile", "5k", "10k", "15k"];
-const ALL = [...LIFTS, ...RUNS];
+// Goals track a fixed, curated set of lifts/runs (not the full free-form
+// catalog) — these are the owner's chosen year-end targets.
+const GOAL_TRACKED = ["bench", "squat", "pull-ups", "1mile", "5k"];
+const GOAL_RUN_NAMES = new Set(["1mile", "2mile", "3mile", "4mile", "5mile", "5k", "10k", "15k"]);
 
 export default function Workouts() {
   const [refresh, setRefresh] = useState(0);
@@ -43,6 +45,13 @@ export default function Workouts() {
         <Goals refresh={refresh} onChange={bump} />
       </div>
 
+      <StreakStats refresh={refresh} />
+
+      <div className="wo__cols wo__cols--viz">
+        <PRFeed refresh={refresh} />
+        <BalanceRadar refresh={refresh} />
+      </div>
+
       <VolumeTrends refresh={refresh} />
       <ExerciseProgress refresh={refresh} />
       <History refresh={refresh} onChange={bump} />
@@ -50,9 +59,40 @@ export default function Workouts() {
   );
 }
 
+/* ---------------------------------------- Exercise name combobox + mode */
+// A free-text input with a datalist of previously-logged names, plus a
+// lift/run mode toggle that defaults from the typed name's known history.
+function useExerciseCatalog() {
+  const [catalog, setCatalog] = useState(null);
+  useEffect(() => {
+    api.get("/workouts/exercise-names").then(setCatalog).catch(() => setCatalog({ lifts: [], runs: [] }));
+  }, []);
+  return catalog;
+}
+
+function ExerciseCombobox({ listId, value, onChange, catalog }) {
+  return (
+    <>
+      <input
+        list={listId}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="e.g. bench, deadlift, 5k…"
+        autoComplete="off"
+      />
+      <datalist id={listId}>
+        {(catalog?.lifts || []).map((x) => <option key={x} value={x} />)}
+        {(catalog?.runs || []).map((x) => <option key={x} value={x} />)}
+      </datalist>
+    </>
+  );
+}
+
 /* ----------------------------------------------------- Log entry */
 function LogEntry({ onAdded }) {
+  const catalog = useExerciseCatalog();
   const [exercise, setExercise] = useState("bench");
+  const [isRun, setIsRun] = useState(false);
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
   const [mins, setMins] = useState("");
@@ -61,13 +101,19 @@ function LogEntry({ onAdded }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
-  const isRun = RUNS.includes(exercise);
+  // When the typed name matches a known exercise, follow its known mode.
+  const handleExerciseChange = (name) => {
+    setExercise(name);
+    if (catalog?.runs?.includes(name)) setIsRun(true);
+    else if (catalog?.lifts?.includes(name)) setIsRun(false);
+  };
 
   const submit = async (e) => {
     e.preventDefault();
     setErr("");
+    if (!exercise.trim()) return setErr("Enter an exercise name.");
     if (!date) return setErr("Pick a date.");
-    const body = { exercise, date };
+    const body = { exercise: exercise.trim(), date };
     if (isRun) {
       const total = Number(mins || 0) * 60 + Number(secs || 0);
       if (!total) return setErr("Enter a time.");
@@ -93,19 +139,21 @@ function LogEntry({ onAdded }) {
     <Panel title="Log a set">
       <form className="form-grid" onSubmit={submit}>
         <div className="form-row">
-          <Field label="Exercise">
-            <select value={exercise} onChange={(e) => setExercise(e.target.value)}>
-              <optgroup label="Lifts">
-                {LIFTS.map((x) => <option key={x}>{x}</option>)}
-              </optgroup>
-              <optgroup label="Runs">
-                {RUNS.map((x) => <option key={x}>{x}</option>)}
-              </optgroup>
-            </select>
+          <Field label="Exercise" hint="Type a new name or pick a past one.">
+            <ExerciseCombobox listId="logEntryNames" value={exercise} onChange={handleExerciseChange} catalog={catalog} />
           </Field>
           <Field label="Date">
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mono" />
           </Field>
+        </div>
+
+        <div className="mode-toggle" role="radiogroup" aria-label="Exercise type">
+          <button type="button" className={`mode-toggle__btn ${!isRun ? "is-active" : ""}`} onClick={() => setIsRun(false)}>
+            Lift (weight × reps)
+          </button>
+          <button type="button" className={`mode-toggle__btn ${isRun ? "is-active" : ""}`} onClick={() => setIsRun(true)}>
+            Run (time)
+          </button>
         </div>
 
         {isRun ? (
@@ -147,8 +195,6 @@ function Goals({ refresh, onChange }) {
     [goals]
   );
 
-  const tracked = ["bench", "squat", "pull-ups", "1mile", "5k"];
-
   return (
     <Panel
       title="Goals · by Dec 31"
@@ -158,7 +204,7 @@ function Goals({ refresh, onChange }) {
         <Spinner />
       ) : (
         <ul className="goals">
-          {tracked.map((ex) => {
+          {GOAL_TRACKED.map((ex) => {
             const g = byExercise[ex];
             return (
               <li key={ex} className="goal">
@@ -169,14 +215,14 @@ function Goals({ refresh, onChange }) {
           })}
         </ul>
       )}
-      <GoalEditor open={!!edit} goals={byExercise} tracked={tracked} onClose={() => setEdit(null)} onSaved={() => { onChange(); setEdit(null); }} />
+      <GoalEditor open={!!edit} goals={byExercise} tracked={GOAL_TRACKED} onClose={() => setEdit(null)} onSaved={() => { onChange(); setEdit(null); }} />
     </Panel>
   );
 }
 
 function goalLabel(ex, g) {
   if (!g) return "—";
-  if (RUNS.includes(ex)) return fmtTime(g.target_seconds);
+  if (GOAL_RUN_NAMES.has(ex)) return fmtTime(g.target_seconds);
   return `${g.target_weight ?? 0} × ${g.target_reps ?? 0}`;
 }
 
@@ -190,7 +236,7 @@ function GoalEditor({ open, goals, tracked, onClose, onSaved }) {
     const d = draft[ex] || {};
     const g = goals[ex] || {};
     const body = { exercise: ex };
-    if (RUNS.includes(ex)) {
+    if (GOAL_RUN_NAMES.has(ex)) {
       const min = d.min ?? Math.floor((g.target_seconds || 0) / 60);
       const sec = d.sec ?? (g.target_seconds || 0) % 60;
       body.target_seconds = Number(min) * 60 + Number(sec);
@@ -215,7 +261,7 @@ function GoalEditor({ open, goals, tracked, onClose, onSaved }) {
       <form className="form-grid" onSubmit={saveAll}>
         {tracked.map((ex) => {
           const g = goals[ex] || {};
-          const run = RUNS.includes(ex);
+          const run = GOAL_RUN_NAMES.has(ex);
           return (
             <div key={ex} className="goal-edit">
               <span className="goal-edit__name">{ex}</span>
@@ -241,6 +287,141 @@ function GoalEditor({ open, goals, tracked, onClose, onSaved }) {
   );
 }
 
+/* --------------------------------------------------- Streak / consistency */
+function StreakStats({ refresh }) {
+  const [data, setData] = useState(null);
+  useEffect(() => {
+    api.get("/workouts/streaks").then(setData).catch(() => {});
+  }, [refresh]);
+
+  const weeks = data?.weeks || [];
+  const thisWeek = weeks[weeks.length - 1]?.count ?? 0;
+  const avgWeek = weeks.length
+    ? Math.round((weeks.reduce((s, w) => s + w.count, 0) / weeks.length) * 10) / 10
+    : 0;
+
+  return (
+    <Panel className="streaks" title="Consistency">
+      {!data ? (
+        <Spinner />
+      ) : (
+        <div className="streaks__row">
+          <Stat label="Current streak" value={`${data.current_streak}d`} accent="var(--primary)" />
+          <Stat label="Longest streak" value={`${data.longest_streak}d`} />
+          <Stat
+            label="This week"
+            value={thisWeek}
+            delta={avgWeek ? ((thisWeek - avgWeek) / avgWeek) * 100 : null}
+          />
+          <Stat label="Total workout days" value={data.total_workout_days} />
+        </div>
+      )}
+      {weeks.length > 0 && (
+        <div className="streaks__sparkline">
+          <ResponsiveContainer width="100%" height={48}>
+            <LineChart data={weeks} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
+              <XAxis dataKey="week_start" hide />
+              <YAxis hide domain={[0, "auto"]} />
+              <Line
+                type="monotone"
+                dataKey="count"
+                stroke="var(--primary)"
+                strokeWidth={2}
+                dot={{ r: 2 }}
+                isAnimationActive={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+          <p className="streaks__hint mono">Workouts/week · last 8 weeks</p>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+/* --------------------------------------------- Personal records feed */
+function PRFeed({ refresh }) {
+  const [prs, setPrs] = useState(null);
+  useEffect(() => {
+    api.get("/workouts/prs").then(setPrs).catch(() => setPrs([]));
+  }, [refresh]);
+
+  return (
+    <Panel title="Personal records" className="prfeed">
+      {!prs ? (
+        <Spinner />
+      ) : prs.length === 0 ? (
+        <EmptyState title="No PRs yet" hint="Log a set to start your records." />
+      ) : (
+        <ul className="prfeed__list">
+          {prs.map((pr) => (
+            <li key={pr.exercise} className="prfeed__item">
+              <span className={`grp-dot grp-dot--${(pr.is_run ? "run" : "lift")}`} aria-hidden />
+              <div className="prfeed__main">
+                <span className="prfeed__name">{pr.exercise}</span>
+                <span className="prfeed__sub mono">
+                  {pr.is_run
+                    ? fmtTime(pr.value)
+                    : `${pr.weight} × ${pr.reps} (est. ${pr.value} 1RM)`}
+                </span>
+              </div>
+              <span className="prfeed__date mono">{fmtDate(pr.date)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  );
+}
+
+/* -------------------------------------------------- Balance radar */
+function BalanceRadar({ refresh }) {
+  const [data, setData] = useState(null);
+  useEffect(() => {
+    api.get("/workouts/balance").then(setData).catch(() => {});
+  }, [refresh]);
+
+  const chart = data?.groups || [];
+  const hasData = chart.some((g) => g.count > 0);
+
+  return (
+    <Panel title="Training balance" className="balance">
+      <p className="balance__hint mono">Sets logged per group · last {data?.window_days ?? 90} days</p>
+      {!data ? (
+        <Spinner />
+      ) : !hasData ? (
+        <EmptyState title="No recent entries" hint="Log a few sets to see your balance." />
+      ) : (
+        <ResponsiveContainer width="100%" height={240}>
+          <RadarChart data={chart} margin={{ top: 8, right: 24, bottom: 8, left: 24 }}>
+            <PolarGrid stroke="var(--border)" />
+            <PolarAngleAxis dataKey="group" tick={{ fill: "var(--ink-muted)", fontSize: 12 }} />
+            <Radar
+              dataKey="count"
+              stroke="var(--primary)"
+              fill="var(--primary)"
+              fillOpacity={0.28}
+              isAnimationActive={false}
+            />
+            <Tooltip
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const d = payload[0].payload;
+                return (
+                  <div className="rtt">
+                    <div className="rtt__label">{d.group}</div>
+                    <div className="rtt__row mono">{d.count} sets</div>
+                  </div>
+                );
+              }}
+            />
+          </RadarChart>
+        </ResponsiveContainer>
+      )}
+    </Panel>
+  );
+}
+
 /* ------------------------------------------------ Volume trend sparklines */
 function VolumeTrends({ refresh }) {
   const [data, setData] = useState(null);
@@ -251,15 +432,15 @@ function VolumeTrends({ refresh }) {
 
   if (!data) return null;
 
-  const lifts = Object.entries(LIFT_LABELS).map(([ex, label]) => ({ ex, label, ...data[ex] }));
-  const runs = Object.entries(RUN_LABELS).map(([ex, label]) => ({ ex, label, ...data[ex] }));
-  const all = [...lifts, ...runs].filter((e) => e.series?.length > 0);
+  const all = Object.entries(data)
+    .map(([ex, v]) => ({ ex, label: ex, ...v }))
+    .filter((e) => e.series?.length > 0);
 
   if (all.length === 0) return null;
 
   return (
     <Panel title="Monthly volume">
-      <p className="vol__hint mono">Best 1RM per month for lifts · best time for runs</p>
+      <p className="vol__hint mono">Best 1RM per month for lifts · best time for runs · top 6 most-logged exercises</p>
       <div className="vol__grid">
         {all.map(({ ex, label, series, is_run }) => {
           const chartData = series.map((s) => ({ m: s.month.slice(5), v: s.value }));
@@ -322,12 +503,22 @@ function VolumeTrends({ refresh }) {
 
 /* ------------------------------------------- Per-exercise progress */
 function ExerciseProgress({ refresh }) {
-  const [exercise, setExercise] = useState("bench");
+  const catalog = useExerciseCatalog();
+  const [exercise, setExercise] = useState("");
   const [data, setData] = useState(null);
 
+  // Default to the first known exercise once the catalog loads.
   useEffect(() => {
+    if (!exercise && catalog) {
+      const first = catalog.lifts[0] || catalog.runs[0];
+      if (first) setExercise(first);
+    }
+  }, [catalog, exercise]);
+
+  useEffect(() => {
+    if (!exercise) return;
     setData(null);
-    api.get(`/workouts/progress/${exercise}`).then(setData).catch(() => setData(null));
+    api.get(`/workouts/progress/${encodeURIComponent(exercise)}`).then(setData).catch(() => setData(null));
   }, [exercise, refresh]);
 
   const chart = useMemo(() => {
@@ -345,16 +536,17 @@ function ExerciseProgress({ refresh }) {
       title="Progress by exercise"
       className="exprog"
       action={
-        <select value={exercise} onChange={(e) => setExercise(e.target.value)} className="report__pick">
-          <optgroup label="Lifts">{LIFTS.map((x) => <option key={x}>{x}</option>)}</optgroup>
-          <optgroup label="Runs">{RUNS.map((x) => <option key={x}>{x}</option>)}</optgroup>
-        </select>
+        <div className="exprog__pick">
+          <ExerciseCombobox listId="exprogNames" value={exercise} onChange={setExercise} catalog={catalog} />
+        </div>
       }
     >
       <p className="exprog__metric mono">
         {isRun ? "Finishing time (lower is better)" : "Estimated 1-rep max (Epley)"}
       </p>
-      {!data ? (
+      {!exercise ? (
+        <EmptyState title="No exercises logged yet" hint="Log a set above to start tracking progress." />
+      ) : !data ? (
         <Spinner />
       ) : chart.length === 0 ? (
         <EmptyState title={`No ${exercise} entries yet`} hint="Log a set above to start the line." />

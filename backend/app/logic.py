@@ -21,8 +21,17 @@ def estimated_1rm(weight: float | None, reps: int | None) -> float | None:
     return round(weight * (1 + reps / 30.0), 1)
 
 
-def infer_group(exercise: str) -> str:
-    """Map an exercise to its training group for the entry default."""
+_KNOWN_RUN_NAMES = {"1mile", "2mile", "3mile", "4mile", "5mile", "5k", "10k", "15k"}
+
+
+def infer_group(exercise: str, is_run: bool = False) -> str:
+    """Map an exercise to its training group for the entry default.
+
+    Exercise names are free-form now, so this only recognizes a few
+    well-known names; everything else falls back to "Run" if it was logged
+    with a time, or "Other" if it was logged as a lift. Callers can always
+    send an explicit `group` to override this guess.
+    """
     e = exercise.lower()
     if e == "bench":
         return "Push"
@@ -30,7 +39,9 @@ def infer_group(exercise: str) -> str:
         return "Pull"
     if e == "squat":
         return "Legs"
-    return "Run"
+    if is_run or e in _KNOWN_RUN_NAMES:
+        return "Run"
+    return "Other"
 
 
 # --------------------------------------------------------------------------- #
@@ -71,6 +82,27 @@ def apply_paycheck_to_month(month_row, amount: Decimal) -> None:
     amount = Decimal(amount)
     month_row.monthly_gain = (month_row.monthly_gain or Decimal(0)) + amount
     month_row.total_cash = (month_row.total_cash or Decimal(0)) + amount
+
+
+def project_month_end(
+    avg_monthly: float, spent_so_far: float, day_of_month: int, days_in_month: int
+) -> float:
+    """Estimate this category's total spend by month end.
+
+    If spend-to-date already exceeds the typical monthly average, there's no
+    way to "come back down" — the projection is just what's already spent
+    (floored at the current total). Otherwise, project forward from the
+    current daily pace for the remaining days: spent so far, plus the
+    average daily rate (based on the historical monthly average) applied to
+    the days left in the month.
+    """
+    if avg_monthly <= 0:
+        return spent_so_far
+    if spent_so_far >= avg_monthly:
+        return spent_so_far
+    days_remaining = max(0, days_in_month - day_of_month)
+    avg_daily_rate = avg_monthly / days_in_month
+    return spent_so_far + avg_daily_rate * days_remaining
 
 
 HOME_VALUE = Decimal("145000")

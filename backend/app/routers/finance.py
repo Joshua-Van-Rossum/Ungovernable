@@ -256,6 +256,87 @@ def expense_report(
     }
 
 
+@router.get("/projection")
+def monthly_projection(db: Session = Depends(get_db)):
+    """Project this month's end-of-month spend, by category and overall.
+
+    "Typical" spend per category is the trailing 6 *complete* months' average
+    (the current in-progress month is excluded from the average so it can't
+    bias its own projection). For each category we report what's already
+    been spent this month, whether that already exceeds the typical month,
+    and a projected month-end total; the grand total sums every category's
+    projection.
+    """
+    today = date.today()
+    days_in_month = (
+        date(today.year + 1, 1, 1) if today.month == 12 else date(today.year, today.month + 1, 1)
+    ) - date(today.year, today.month, 1)
+    days_in_month = days_in_month.days
+
+    # Trailing 6 complete months, ending the month before this one.
+    this_month_start_index = today.year * 12 + (today.month - 1)
+    avg_start_index = this_month_start_index - 6
+    asy, asm = divmod(avg_start_index, 12)
+    asm += 1
+    avg_start = date(asy, asm, 1)
+    avg_end_excl = date(today.year, today.month, 1)  # exclusive: up to this month
+
+    this_month_start = date(today.year, today.month, 1)
+    this_month_end_excl = (
+        date(today.year + 1, 1, 1) if today.month == 12 else date(today.year, today.month + 1, 1)
+    )
+
+    # Sum per category over the averaging window.
+    avg_rows = (
+        db.query(models.Expense.category, func.coalesce(func.sum(models.Expense.amount), 0))
+        .filter(models.Expense.date >= avg_start)
+        .filter(models.Expense.date < avg_end_excl)
+        .group_by(models.Expense.category)
+        .all()
+    )
+    totals_by_cat = {cat: float(total) for cat, total in avg_rows}
+
+    # Spend so far this month, per category.
+    mtd_rows = (
+        db.query(models.Expense.category, func.coalesce(func.sum(models.Expense.amount), 0))
+        .filter(models.Expense.date >= this_month_start)
+        .filter(models.Expense.date < this_month_end_excl)
+        .group_by(models.Expense.category)
+        .all()
+    )
+    spent_by_cat = {cat: float(total) for cat, total in mtd_rows}
+
+    categories = []
+    grand_projected = 0.0
+    grand_spent = 0.0
+    for cat in models.EXPENSE_CATEGORIES:
+        avg_monthly = round(totals_by_cat.get(cat, 0.0) / 6, 2)
+        spent_so_far = round(spent_by_cat.get(cat, 0.0), 2)
+        projected = round(
+            logic.project_month_end(avg_monthly, spent_so_far, today.day, days_in_month), 2
+        )
+        categories.append({
+            "category": cat,
+            "avg_monthly": avg_monthly,
+            "spent_so_far": spent_so_far,
+            "over_budget": spent_so_far > avg_monthly > 0,
+            "projected_total": projected,
+        })
+        grand_projected += projected
+        grand_spent += spent_so_far
+
+    return {
+        "year": today.year,
+        "month": today.month,
+        "day": today.day,
+        "days_in_month": days_in_month,
+        "days_remaining": max(0, days_in_month - today.day),
+        "categories": categories,
+        "spent_so_far_total": round(grand_spent, 2),
+        "projected_total": round(grand_projected, 2),
+    }
+
+
 _METRIC_FIELDS = {
     "networth": None,  # computed
     "debt": "debt",

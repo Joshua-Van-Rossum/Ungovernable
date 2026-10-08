@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.database import Base, engine
-from app.routers import dashboard, external, finance, habits, projects, upskilling, workouts
+from app.routers import dashboard, external, finance, workouts
 
 load_dotenv()
 
@@ -44,7 +44,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for r in (finance, habits, projects, workouts, dashboard, external, upskilling):
+for r in (finance, workouts, dashboard, external):
     app.include_router(r.router)
 
 

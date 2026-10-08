@@ -17,6 +17,35 @@
   gap: var(--gutter);
 }
 
+/* Exercise mode toggle (lift vs run) */
+.mode-toggle {
+  display: flex;
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.mode-toggle__btn {
+  flex: 1;
+  padding: 9px 10px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--ink-faint);
+  background: var(--surface);
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.mode-toggle__btn:hover {
+  background: var(--surface-2);
+  color: var(--ink-muted);
+}
+.mode-toggle__btn.is-active {
+  background: var(--primary-dim);
+  color: var(--primary-hi);
+}
+
 .time-input {
   display: flex;
   align-items: center;
@@ -91,6 +120,11 @@
   color: var(--ink-faint);
   text-align: center;
 }
+.exprog__pick input {
+  width: 160px;
+  font-size: 0.8rem;
+  padding: 6px 10px;
+}
 
 /* Group chips */
 .grp {
@@ -115,6 +149,96 @@
 .grp--run {
   color: oklch(0.7 0.13 250);
   background: oklch(0.7 0.13 250 / 0.16);
+}
+.grp--other {
+  color: var(--ink-faint);
+  background: var(--surface-2);
+}
+
+/* Group dot (PR feed) */
+.grp-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.grp-dot--lift {
+  background: var(--primary);
+}
+.grp-dot--run {
+  background: oklch(0.7 0.13 250);
+}
+
+/* Streak / consistency */
+.streaks__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 16px;
+}
+.streaks__sparkline {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.streaks__hint {
+  margin: 4px 0 0;
+  font-size: 0.7rem;
+  color: var(--ink-faint);
+  text-align: center;
+}
+
+/* Viz row: PR feed + balance radar */
+.wo__cols--viz {
+  align-items: stretch;
+}
+
+/* Personal records feed */
+.prfeed__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 360px;
+  overflow-y: auto;
+}
+.prfeed__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.prfeed__item:last-child {
+  border-bottom: none;
+}
+.prfeed__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.prfeed__name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.prfeed__sub {
+  font-size: 0.74rem;
+  color: var(--ink-faint);
+}
+.prfeed__date {
+  font-size: 0.74rem;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+/* Balance radar */
+.balance__hint {
+  margin: -4px 0 8px;
+  font-size: 0.74rem;
+  color: var(--ink-faint);
 }
 
 /* History scroll container */

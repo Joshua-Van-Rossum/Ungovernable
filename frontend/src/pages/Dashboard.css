@@ -50,61 +50,6 @@
   text-overflow: ellipsis;
 }
 
-/* Screen-time cycling tile */
-.screentime-cycle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  width: 100%;
-  text-align: left;
-  padding: 14px 18px;
-  border-radius: var(--r-lg);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  transition: border-color 0.15s, background 0.15s;
-}
-.screentime-cycle:hover {
-  border-color: var(--border-strong);
-  background: var(--surface-2);
-}
-.screentime-cycle__main {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.screentime-cycle__label {
-  font-size: 0.74rem;
-  color: var(--ink-faint);
-}
-.screentime-cycle__value {
-  font-size: clamp(1.3rem, 3vw, 1.7rem);
-  font-weight: 700;
-  color: var(--ink);
-}
-.screentime-cycle__dots {
-  display: flex;
-  gap: 5px;
-  margin-left: auto;
-}
-.screentime-cycle__dots .dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--border-strong);
-  transition: background 0.2s, transform 0.2s;
-}
-.screentime-cycle__dots .dot.is-active {
-  background: var(--primary);
-  transform: scale(1.25);
-}
-.screentime-cycle__hint {
-  font-size: 0.72rem;
-  color: var(--ink-faint);
-  white-space: nowrap;
-}
-
 /* Stock card */
 .stock-card {
   display: flex;
@@ -169,236 +114,114 @@
   color: var(--ink);
 }
 
-/* ---- Core: [habits + projects] column | skinny consistency column ---- */
-.dash__core {
+/* ---- Fitness: recent workouts + "next up" stale-PR callout ---- */
+.dash__fitness {
   display: grid;
-  grid-template-columns: 1fr 200px;
+  grid-template-columns: 1.4fr 1fr;
   gap: var(--gutter);
-  align-items: start;
+  align-items: stretch;
 }
-.dash__stack {
+
+/* Group chips (same palette as the Workouts page) */
+.grp {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.grp--push {
+  color: var(--primary-hi);
+  background: var(--primary-dim);
+}
+.grp--pull {
+  color: var(--gain);
+  background: var(--gain-dim);
+}
+.grp--legs {
+  color: var(--warn);
+  background: oklch(0.82 0.14 85 / 0.16);
+}
+.grp--run {
+  color: oklch(0.7 0.13 250);
+  background: oklch(0.7 0.13 250 / 0.16);
+}
+.grp--other {
+  color: var(--ink-faint);
+  background: var(--surface-2);
+}
+
+/* Recent workouts */
+.recent-wo__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--gutter);
+}
+.recent-wo__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--border);
+}
+.recent-wo__item:last-child {
+  border-bottom: none;
+}
+.recent-wo__name {
+  flex: 1;
   min-width: 0;
+  font-size: 0.86rem;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-
-.dash__grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--gutter);
-}
-.span-2 {
-  grid-column: span 2;
-}
-
-/* Habits */
-.habits__count {
+.recent-wo__result {
   font-size: 0.82rem;
   color: var(--ink-muted);
-  background: var(--surface-2);
-  padding: 3px 9px;
-  border-radius: 99px;
 }
-.habit-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.habit {
-  border-radius: var(--r-sm);
-  transition: background 0.15s;
-}
-.habit:hover {
-  background: var(--surface-2);
-}
-.habit__check {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  width: 100%;
-  min-height: 44px;
-  padding: 6px 8px;
-  background: none;
-  border: none;
-  color: var(--ink);
-  text-align: left;
-  font-size: 0.92rem;
-}
-.habit__box {
-  display: inline-grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  border: 1.5px solid var(--border-strong);
-  color: oklch(1 0 0);
-  font-size: 0.8rem;
-  font-weight: 700;
-  flex-shrink: 0;
-  transition: background 0.15s, border-color 0.15s;
-}
-.habit.is-done .habit__box {
-  background: var(--gain);
-  border-color: var(--gain);
-}
-.habit.is-done .habit__name {
-  color: var(--ink-faint);
-  text-decoration: line-through;
-  text-decoration-color: var(--ink-faint);
-}
-.habit__name {
-  background: none;
-  border: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  padding: 0;
-  flex: 1;
-}
-.habit__name:hover {
-  color: var(--primary-hi);
-}
-.habit__streak {
+.recent-wo__date {
   font-size: 0.74rem;
-  color: var(--warn);
-}
-.habit__num {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 6px 8px;
-  min-height: 44px;
-}
-.habit__num .habit__name {
-  flex: 1;
-}
-.habit__num input {
-  width: 78px;
-  text-align: right;
-  padding: 6px 9px;
+  color: var(--ink-faint);
+  white-space: nowrap;
 }
 
-/* Drill-down */
-.drill {
-  margin-top: 12px;
-  padding: 12px;
-  border-radius: var(--r-md);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  animation: fadeIn 0.2s var(--ease-out-expo);
-}
-.drill__head {
+/* Next-up stale-PR callout */
+.next-up__body {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
+  flex-direction: column;
+  gap: 6px;
 }
-.drill__stats {
+.next-up__hint {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--ink-faint);
+}
+.next-up__name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.next-up__row {
   display: flex;
-  gap: 14px;
-  font-size: 0.78rem;
-  color: var(--ink-muted);
+  align-items: baseline;
+  gap: 10px;
   margin-bottom: 6px;
 }
-
-/* Consistency (skinny column, vertical-flow grid) */
-.consistency {
-  position: sticky;
-  top: 84px;
+.next-up__value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--primary);
 }
-.consistency__stats {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
-}
-
-.vgrid {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.vgrid__rows {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.vgrid__week {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-}
-.vgrid__cell {
-  aspect-ratio: 1;
-  width: 100%;
-  border-radius: 3px;
-  background: var(--grid-0);
-  transition: transform 0.12s var(--ease-out-quart);
-  cursor: default;
-}
-.vgrid__cell:hover {
-  transform: scale(1.18);
-  box-shadow: 0 0 0 1px var(--border-strong);
-}
-.vgrid__cell[data-level="1"] { background: var(--grid-1); }
-.vgrid__cell[data-level="2"] { background: var(--grid-2); }
-.vgrid__cell[data-level="3"] { background: var(--grid-3); }
-.vgrid__cell[data-level="4"] { background: var(--grid-4); }
-.vgrid__foot {
-  display: flex;
-  justify-content: center;
-  font-size: 0.7rem;
+.next-up__since {
+  font-size: 0.76rem;
   color: var(--ink-faint);
-  min-height: 16px;
 }
-.vgrid__ramp {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.vgrid__cell--legend {
-  width: 10px;
-  height: 10px;
-  aspect-ratio: auto;
-}
-.vgrid__cell--legend:hover {
-  transform: none;
-  box-shadow: none;
-}
-
-/* Projects mini */
-.projmini__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-.projmini__item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 6px;
-  border-radius: var(--r-sm);
-  color: var(--ink);
-  font-size: 0.9rem;
-  transition: background 0.15s;
-}
-.projmini__item:hover {
-  background: var(--surface-2);
-}
-.projmini__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--primary);
+.next-up__cta {
+  align-self: flex-start;
 }
 
 /* YouTube */
@@ -465,42 +288,18 @@
   line-height: 1.35;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-}
-
 /* Responsive */
 @media (max-width: 980px) {
   .dash__top {
     grid-template-columns: 1fr;
   }
-  .dash__core {
+  .dash__fitness {
     grid-template-columns: 1fr;
-  }
-  .consistency {
-    position: static;
-  }
-  .consistency__stats {
-    flex-direction: row;
-  }
-}
-@media (max-width: 860px) {
-  .dash__grid {
-    grid-template-columns: 1fr;
-  }
-  .span-2 {
-    grid-column: span 1;
   }
 }
 @media (max-width: 520px) {
   .fin-grid__cells {
     grid-template-columns: 1fr 1fr;
-  }
-  .screentime-cycle__hint {
-    display: none;
   }
   .fin-cell {
     padding: 12px;
@@ -513,14 +312,5 @@
   }
   .dash__title h1 {
     font-size: 1.3rem;
-  }
-  .consistency__stats {
-    flex-direction: column;
-  }
-  .habit-list {
-    gap: 2px;
-  }
-  .habit__check {
-    min-height: 40px;
   }
 }
