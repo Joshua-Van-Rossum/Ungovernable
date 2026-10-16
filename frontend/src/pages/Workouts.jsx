@@ -91,7 +91,7 @@ function ExerciseCombobox({ listId, value, onChange, catalog }) {
 /* ----------------------------------------------------- Log entry */
 function LogEntry({ onAdded }) {
   const catalog = useExerciseCatalog();
-  const [exercise, setExercise] = useState("bench");
+  const [exercise, setExercise] = useState("");
   const [isRun, setIsRun] = useState(false);
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
